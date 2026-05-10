@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Jerry的时间块</title>
+    
+    <!-- 👇 新增：App 专属图标与全屏沉浸模式配置 👇 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="时间块">
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzAwMDAwMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTIlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBiaW5rTWFjU3lzdGVtRm9udCwgU2Vnb2UgVUksIFJvYm90bywgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNDAiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5KPC90ZXh0Pjwvc3ZnPg==" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzAwMDAwMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTIlIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBiaW5rTWFjU3lzdGVtRm9udCwgU2Vnb2UgVUksIFJvYm90bywgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIzNDAiIGZvbnQtd2VpZ2h0PSI5MDAiIGZpbGw9IiNmZmZmZmYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJjZW50cmFsIj5KPC90ZXh0Pjwvc3ZnPg==">
+    <!-- 👆 新增结束 👆 -->
+
     <!-- 引入 React, ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -207,7 +216,7 @@
                 <div className="max-w-md mx-auto min-h-screen flex flex-col bg-slate-50 pb-10">
                     <div className="p-6 bg-white flex justify-between items-center sticky top-0 z-40 shadow-sm">
                         <h1 className="text-xl font-black italic tracking-tighter flex items-center gap-2">
-                            <span className="bg-slate-900 text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs not-italic">J</span>
+                            <span className="bg-black text-white w-7 h-7 flex items-center justify-center text-sm font-bold not-italic">J</span>
                             Jerry的时间块
                         </h1>
                         <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1">
@@ -339,7 +348,29 @@
                                 <div className="h-56 w-full mb-6">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
-                                            <Pie data={statsData} innerRadius={60} outerRadius={85} paddingAngle={5} dataKey="value" stroke="none">
+                                            <Pie 
+                                                data={statsData} 
+                                                innerRadius={45} 
+                                                outerRadius={70} 
+                                                paddingAngle={5} 
+                                                dataKey="value" 
+                                                stroke="none"
+                                                labelLine={{ stroke: '#cbd5e1', strokeWidth: 1 }}
+                                                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index }) => {
+                                                    const RADIAN = Math.PI / 180;
+                                                    // 1.25 控制文字向外延伸的距离
+                                                    const radius = outerRadius * 1.25;
+                                                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                                                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                                                    // 占比小于 2% 就不显示文字，防止小色块拥挤
+                                                    if (percent < 0.02) return null;
+                                                    return (
+                                                        <text x={x} y={y} fill={statsData[index].color} textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize="11px" fontWeight="900">
+                                                            {statsData[index].name} {(percent * 100).toFixed(0)}%
+                                                        </text>
+                                                    );
+                                                }}
+                                            >
                                                 {statsData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                                             </Pie>
                                             <Tooltip />
