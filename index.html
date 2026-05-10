@@ -5,12 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Jerry的时间块</title>
     
-    <!-- 专属黑白极简 J 图标 (纯手写圆润线条版) -->
+    <!-- 全屏沉浸模式配置 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Jerry">
-    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzAwMDAwMCIvPjxwYXRoIGQ9Ik0zMzYgMTI2IEwzMzYgMzA2IEE4MCA4MCAwIDAgMSAxNzYgMzA2IEwxNzYgMjY2IiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzAwMDAwMCIvPjxwYXRoIGQ9Ik0zMzYgMTI2IEwzMzYgMzA2IEE4MCA4MCAwIDAgMSAxNzYgMzA2IEwxNzYgMjY2IiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==">
+
+    <!-- 👇 核心黑科技：用代码现场画出 PNG 图标，专治苹果不认 SVG 的毛病 👇 -->
+    <script>
+        (function() {
+            var canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            var ctx = canvas.getContext('2d');
+            
+            // 画黑色背景
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 512, 512);
+            
+            // 画白色圆润的 J
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 64;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            ctx.moveTo(336, 126);
+            ctx.lineTo(336, 306);
+            ctx.arc(256, 306, 80, 0, Math.PI, false); // 完美的半圆底部弯钩
+            ctx.lineTo(176, 266);
+            ctx.stroke();
+            
+            // 瞬间转成 PNG 给苹果系统读取
+            var pngUrl = canvas.toDataURL('image/png');
+            
+            var link1 = document.createElement('link');
+            link1.rel = 'icon';
+            link1.type = 'image/png';
+            link1.href = pngUrl;
+            document.head.appendChild(link1);
+            
+            var link2 = document.createElement('link');
+            link2.rel = 'apple-touch-icon';
+            link2.href = pngUrl;
+            document.head.appendChild(link2);
+        })();
+    </script>
+    <!-- 👆 黑科技结束 👆 -->
 
     <!-- 引入 React, ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -203,7 +242,6 @@
                 <div className="max-w-md mx-auto min-h-screen flex flex-col bg-slate-50 pb-10">
                     <div className="p-6 bg-white flex justify-between items-center sticky top-0 z-40 shadow-sm">
                         <h1 className="text-xl font-black italic tracking-tighter flex items-center gap-2">
-                            {/* 更新：这里同步换成了圆润的手绘 J Logo */}
                             <div className="bg-black w-8 h-8 flex items-center justify-center rounded-xl shadow-sm">
                                 <svg viewBox="0 0 512 512" className="w-6 h-6">
                                     <path d="M336 126 L336 306 A80 80 0 0 1 176 306 L176 266" stroke="#ffffff" strokeWidth="64" strokeLinecap="round" fill="none"/>
