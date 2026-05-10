@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Jerry的时间块</title>
     
-    <!-- 专属黑白极简 J 图标与全屏沉浸模式配置 (已修复苹果 iOS 兼容性) -->
+    <!-- 专属黑白极简 J 图标 (纯手写圆润线条版) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Jerry">
-    
-    <!-- 使用标准的 PNG 图片链接，彻底解决苹果 Safari 不识别 SVG 的问题 -->
-    <link rel="icon" href="https://ui-avatars.com/api/?name=J&background=000000&color=ffffff&size=512&bold=true&font-size=0.65" type="image/png">
-    <link rel="apple-touch-icon" href="https://ui-avatars.com/api/?name=J&background=000000&color=ffffff&size=512&bold=true&font-size=0.65">
+    <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzAwMDAwMCIvPjxwYXRoIGQ9Ik0zMzYgMTI2IEwzMzYgMzA2IEE4MCA4MCAwIDAgMSAxNzYgMzA2IEwxNzYgMjY2IiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzAwMDAwMCIvPjxwYXRoIGQ9Ik0zMzYgMTI2IEwzMzYgMzA2IEE4MCA4MCAwIDAgMSAxNzYgMzA2IEwxNzYgMjY2IiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iNjQiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjwvc3ZnPg==">
 
     <!-- 引入 React, ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -205,7 +203,12 @@
                 <div className="max-w-md mx-auto min-h-screen flex flex-col bg-slate-50 pb-10">
                     <div className="p-6 bg-white flex justify-between items-center sticky top-0 z-40 shadow-sm">
                         <h1 className="text-xl font-black italic tracking-tighter flex items-center gap-2">
-                            <span className="bg-black text-white w-7 h-7 flex items-center justify-center text-sm font-bold not-italic rounded-sm">J</span>
+                            {/* 更新：这里同步换成了圆润的手绘 J Logo */}
+                            <div className="bg-black w-8 h-8 flex items-center justify-center rounded-xl shadow-sm">
+                                <svg viewBox="0 0 512 512" className="w-6 h-6">
+                                    <path d="M336 126 L336 306 A80 80 0 0 1 176 306 L176 266" stroke="#ffffff" strokeWidth="64" strokeLinecap="round" fill="none"/>
+                                </svg>
+                            </div>
                             Jerry的时间块
                         </h1>
                         <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1">
