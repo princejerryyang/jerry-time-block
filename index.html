@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Jerry的时间块</title>
+    <!-- 引入 React, ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- 引入 Babel 用于在浏览器解析 JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 修复 Recharts 的关键依赖 -->
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+    <!-- 引入图标库 -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .vertical-text { writing-mode: vertical-rl; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } = window.Recharts;
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        const CATEGORIES = {
+            sleep: { label: '睡眠', color: '#818cf8' },
+            work: { label: '工作', color: '#f87171' },
+            study: { label: '学习', color: '#fbbf24' },
+            read: { label: '阅读', color: '#34d399' },
+            eat: { label: '吃饭', color: '#f472b6' },
+            sport: { label: '运动', color: '#60a5fa' },
+            fun: { label: '娱乐', color: '#a78bfa' },
+            none: { label: '空闲', color: '#e2e8f0' }
+        };
+
+        const TOTAL_BLOCKS = 48;
+
+        const App = () => {
+            const [view, setView] = useState('record'); 
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [selectedCategory, setSelectedCategory] = useState('work');
+            const [records, setRecords] = useState(() => {
+                const saved = localStorage.getItem('time_block_records');
+                return saved ? JSON.parse(saved) : {};
+            });
+            const [reviewPeriod, setReviewPeriod] = useState('day');
+
+            // AI 状态管理
+            const [geminiKey, setGeminiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+            const [showKeyInput, setShowKeyInput] = useState(!localStorage.getItem('gemini_api_key'));
+            const [aiResult, setAiResult] = useState('');
+            const [isAiLoading, setIsAiLoading] = useState(false);
+
+            useEffect(() => {
+                localStorage.setItem('time_block_records', JSON.stringify(records));
+            }, [records]);
+
+            useEffect(() => {
+                setAiResult('');
+            }, [reviewPeriod, currentDate]);
+
+            const getYYYYMMDD = (date) => {
+                const d = new Date(date);
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            const dateKey = getYYYYMMDD(currentDate);
+            const currentDayData = records[dateKey] || Array(TOTAL_BLOCKS).fill('none');
+
+            const handleBlockClick = (index) => {
+                const newData = [...currentDayData];
+                newData[index] = selectedCategory;
+                setRecords(prev => ({ ...prev, [dateKey]: newData }));
+            };
+
+            const isDragging = useRef(false);
+            const handleMouseDown = (index) => {
+                isDragging.current = true;
+                handleBlockClick(index);
+            };
+            const handleMouseEnter = (index) => {
+                if (isDragging.current) handleBlockClick(index);
+            };
+            const stopDragging = () => { isDragging.current = false; };
+
+            useEffect(() => {
+                window.addEventListener('mouseup', stopDragging);
+                return () => window.removeEventListener('mouseup', stopDragging);
+            }, []);
+
+            // 核心统计算法：处理跨夜睡眠
+            const statsData = useMemo(() => {
+                let datesToReview = [dateKey];
+                if (reviewPeriod === 'week') {
+                    const d = new Date(currentDate);
+                    const day = d.getDay() || 7;
+                    d.setDate(d.getDate() - day + 1);
+                    datesToReview = Array.from({length: 7}, (_, i) => {
+                        const tmp = new Date(d);
+                        tmp.setDate(tmp.getDate() + i);
+                        return getYYYYMMDD(tmp);
+                    });
+                } else if (reviewPeriod === 'month') {
+                    const year = currentDate.getFullYear();
+                    const month = currentDate.getMonth();
+                    const numDays = new Date(year, month + 1, 0).getDate();
+                    datesToReview = Array.from({length: numDays}, (_, i) => getYYYYMMDD(new Date(year, month, i + 1)));
+                }
+
+                const counts = {};
+                datesToReview.forEach(key => {
+                    const dayData = records[key] || Array(TOTAL_BLOCKS).fill('none');
+                    dayData.forEach(cat => {
+                        if (cat !== 'sleep' && cat !== 'none' && CATEGORIES[cat]) {
+                            counts[cat] = (counts[cat] || 0) + 1;
+                        }
+                    });
+
+                    const prevDate = new Date(key);
+                    prevDate.setDate(prevDate.getDate() - 1);
+                    const prevDayData = records[getYYYYMMDD(prevDate)];
+                    if (prevDayData) {
+                        for (let i = 24; i < 48; i++) if (prevDayData[i] === 'sleep') counts['sleep'] = (counts['sleep'] || 0) + 1;
+                    }
+                    for (let i = 0; i < 24; i++) if (dayData[i] === 'sleep') counts['sleep'] = (counts['sleep'] || 0) + 1;
+                });
+
+                return Object.entries(counts).map(([id, count]) => ({
+                    id,
+                    name: CATEGORIES[id].label,
+                    value: count * 0.5,
+                    color: CATEGORIES[id].color
+                })).sort((a,b) => b.value - a.value);
+            }, [records, dateKey, reviewPeriod, currentDate]);
+
+            const handleSaveKey = () => {
+                if (!geminiKey.trim()) return;
+                localStorage.setItem('gemini_api_key', geminiKey.trim());
+                setShowKeyInput(false);
+            };
+
+            const generateRealAiInsight = async () => {
+                if (!geminiKey) {
+                    setShowKeyInput(true);
+                    return;
+                }
+                setIsAiLoading(true);
+                try {
+                    const periodName = reviewPeriod === 'day' ? '今天' : reviewPeriod === 'week' ? '本周' : '本月';
+                    const statsText = statsData.length > 0 
+                        ? statsData.map(d => `${d.name} ${d.value}小时`).join('，') 
+                        : '完全没有任何记录';
+                    
+                    const promptText = `你是一个名叫Jerry的极其温暖、充满正能量和鼓励的时间管理私人教练。
+这是Jerry${periodName}的时间记录（如果是周/月，这是总数累计）：${statsText}。
+请结合数据给他一段充满鼓励的复盘分析。
+规则：
+1. 字数控制在100字左右。
+2. 语气要像知心好友一样温暖、充满支持与力量，绝对不要有任何指责、吐槽或负面评价。
+3. 无论数据多少，都要先肯定他的努力。如果发现记录的时间很少，请温柔地鼓励他：“每一分钟的记录都很棒！如果能多记录一点，我就能给你更好的建议啦，一起加油哦！”
+4. 如果数据充实，请发掘他做得好的地方，真诚地夸奖和肯定他，并给出温柔的建议。`;
+
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: promptText }] }]
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        setAiResult(`调用出错了：${data.error.message} (检查一下 Key 填对了吗？)`);
+                    } else if (data.candidates && data.candidates[0]) {
+                        setAiResult(data.candidates[0].content.parts[0].text);
+                    }
+                } catch (err) {
+                    setAiResult("网络请求失败，请确保你的网络可以访问 Gemini API 哦。");
+                } finally {
+                    setIsAiLoading(false);
+                }
+            };
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen flex flex-col bg-slate-50 pb-10">
+                    <div className="p-6 bg-white flex justify-between items-center sticky top-0 z-40 shadow-sm">
+                        <h1 className="text-xl font-black italic tracking-tighter flex items-center gap-2">
+                            <span className="bg-slate-900 text-white w-7 h-7 rounded-lg flex items-center justify-center text-xs not-italic">J</span>
+                            Jerry的时间块
+                        </h1>
+                        <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1">
+                            <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate()-1)))} className="p-1 hover:bg-white rounded-full">←</button>
+                            <div className="relative flex items-center justify-center w-24">
+                                <span className="text-xs font-bold text-center text-slate-700">{dateKey.replace(/-/g,'/')} 📅</span>
+                                <input 
+                                    type="date" 
+                                    value={dateKey}
+                                    onChange={(e) => {
+                                        if(e.target.value) {
+                                            const [y, m, d] = e.target.value.split('-');
+                                            setCurrentDate(new Date(y, m - 1, d));
+                                        }
+                                    }}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                            </div>
+                            <button onClick={() => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate()+1)))} className="p-1 hover:bg-white rounded-full">→</button>
+                        </div>
+                    </div>
+
+                    <div className="px-6 my-4">
+                        <div className="bg-slate-200/50 p-1 rounded-2xl flex font-bold text-xs">
+                            <button onClick={() => setView('record')} className={`flex-1 py-2.5 rounded-xl transition-all ${view === 'record' ? 'bg-white shadow-sm' : 'text-slate-400'}`}>时间记录</button>
+                            <button onClick={() => setView('review')} className={`flex-1 py-2.5 rounded-xl transition-all ${view === 'review' ? 'bg-white shadow-sm' : 'text-slate-400'}`}>分析复盘</button>
+                        </div>
+                    </div>
+
+                    {view === 'record' ? (
+                        <div className="flex-1 px-6 flex gap-4">
+                            <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1.5 overflow-y-auto no-scrollbar pb-20">
+                                {Array.from({length: 24}).map((_, i) => (
+                                    <React.Fragment key={i}>
+                                        <TimeBlock index={i} data={currentDayData} onDown={handleMouseDown} onEnter={handleMouseEnter} />
+                                        <TimeBlock index={i+24} data={currentDayData} onDown={handleMouseDown} onEnter={handleMouseEnter} />
+                                    </React.Fragment>
+                                ))}
+                            </div>
+                            <div className="w-14 flex flex-col gap-3 py-4 items-center bg-white rounded-3xl shadow-sm border border-slate-100 sticky top-24 h-fit">
+                                {Object.entries(CATEGORIES).filter(([k])=>k!=='none').map(([id, cat]) => (
+                                    <button 
+                                        key={id}
+                                        onClick={() => setSelectedCategory(id)}
+                                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${selectedCategory === id ? 'ring-4 ring-slate-100 scale-110' : 'opacity-40'}`}
+                                        style={{ backgroundColor: cat.color }}
+                                    >
+                                        <span className="text-[10px] text-white font-bold">{cat.label.slice(0,2)}</span>
+                                    </button>
+                                ))}
+                                <div className="w-6 border-b border-slate-100 my-1"></div>
+                                <button 
+                                    onClick={() => setSelectedCategory('none')}
+                                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all bg-slate-200 ${selectedCategory === 'none' ? 'ring-4 ring-slate-100 scale-110' : 'opacity-50'}`}
+                                >
+                                    <span className="text-[10px] text-slate-500 font-bold">删除</span>
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex-1 px-6 pb-20">
+                            <div className="flex gap-2 mb-6 p-1 bg-slate-200/30 rounded-xl">
+                                {['day', 'week', 'month'].map(p => (
+                                    <button key={p} onClick={() => setReviewPeriod(p)} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${reviewPeriod === p ? 'bg-white shadow-sm text-slate-800' : 'text-slate-400'}`}>
+                                        {p === 'day' ? '日复盘' : p === 'week' ? '周复盘' : '月复盘'}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="bg-indigo-600 p-5 rounded-3xl text-white mb-6 shadow-lg shadow-indigo-100">
+                                <div className="flex justify-between items-center mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">✨</div>
+                                        <span className="text-xs font-bold opacity-80">专属时间教练</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => setShowKeyInput(!showKeyInput)} 
+                                        className="text-[10px] bg-white/10 px-2 py-1 rounded-lg hover:bg-white/20 transition-all"
+                                    >
+                                        ⚙️ 设置 Key
+                                    </button>
+                                </div>
+                                
+                                {showKeyInput ? (
+                                    <div className="flex flex-col gap-2 mt-2">
+                                        <input 
+                                            type="password" 
+                                            value={geminiKey} 
+                                            onChange={(e) => setGeminiKey(e.target.value)}
+                                            placeholder="在此输入你的 Gemini API Key"
+                                            className="w-full px-3 py-2 rounded-xl text-slate-800 text-xs font-medium focus:outline-none"
+                                        />
+                                        <button 
+                                            onClick={handleSaveKey} 
+                                            className="bg-indigo-900 text-white w-full py-2 rounded-xl text-xs font-bold active:scale-95 transition-all"
+                                        >
+                                            保存密钥 (存于本地)
+                                        </button>
+                                        <p className="text-[10px] opacity-60 mt-1 text-center">你的 Key 只会保存在手机本地缓存中，完全安全。</p>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        {aiResult ? (
+                                            <div className="space-y-4">
+                                                <p className="text-sm leading-relaxed font-medium">{aiResult}</p>
+                                                <button 
+                                                    onClick={generateRealAiInsight} 
+                                                    disabled={isAiLoading}
+                                                    className="w-full bg-white/10 py-2 rounded-xl text-xs font-bold active:scale-95 transition-all flex justify-center items-center gap-2"
+                                                >
+                                                    {isAiLoading ? 'AI 正在重新思考...' : '♻️ 重新生成分析'}
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button 
+                                                onClick={generateRealAiInsight} 
+                                                disabled={isAiLoading}
+                                                className="w-full bg-white text-indigo-600 py-3 rounded-xl text-sm font-black active:scale-95 transition-all shadow-sm flex justify-center items-center gap-2"
+                                            >
+                                                {isAiLoading ? '正在请求 Gemini...' : '召唤 AI 生成专属报告'}
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest mb-6">时间占比统计</h3>
+                                <div className="h-56 w-full mb-6">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={statsData} innerRadius={60} outerRadius={85} paddingAngle={5} dataKey="value" stroke="none">
+                                                {statsData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                                            </Pie>
+                                            <Tooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="space-y-3">
+                                    {statsData.map(item => (
+                                        <div key={item.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-2xl">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-3 h-3 rounded-full" style={{backgroundColor: item.color}} />
+                                                <span className="text-sm font-bold text-slate-600">{item.name}</span>
+                                            </div>
+                                            <span className="text-sm font-black text-slate-900">{item.value}h</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const TimeBlock = ({ index, data, onDown, onEnter }) => {
+            let catId = data[index];
+            if (!CATEGORIES[catId]) catId = 'none';
+            
+            const cat = CATEGORIES[catId];
+            const isStart = index === 0 || data[index-1] !== catId;
+            const hour = Math.floor(index / 2);
+            const minute = index % 2 === 0 ? '00' : '30';
+            const displayTime = `${String(hour).padStart(2,'0')}:${minute}`;
+
+            return (
+                <div 
+                    onMouseDown={() => onDown(index)}
+                    onMouseEnter={() => onEnter(index)}
+                    className="flex items-center gap-2 h-9 group cursor-pointer touch-none"
+                >
+                    <span className="text-[10px] font-bold text-slate-300 w-8 tabular-nums">{displayTime}</span>
+                    <div 
+                        className={`flex-1 h-full rounded-xl transition-all border border-transparent flex items-center px-3
+                        ${catId === 'none' ? 'bg-slate-200/40' : 'shadow-sm active:scale-95'}`}
+                        style={{ backgroundColor: catId !== 'none' ? cat.color : undefined }}
+                    >
+                        {catId !== 'none' && isStart && (
+                            <span className="text-[10px] text-white font-black">{cat.label}</span>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
